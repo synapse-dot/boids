@@ -1,86 +1,70 @@
-# --------------------------------------------------
+# =========================
 # Build directories
-# --------------------------------------------------
+# =========================
 build/
-build*/
 cmake-build-*/
 out/
-bin/
 
-# --------------------------------------------------
+# =========================
 # CMake
-# --------------------------------------------------
+# =========================
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
-install_manifest.txt
 CTestTestfile.cmake
-compile_commands.json
 Makefile
+compile_commands.json
+install_manifest.txt
 Testing/
-_deps/
+.cmake/
 
-# Generated package files
-*.cmake.user
+# =========================
+# Ninja
+# =========================
+build.ninja
+.ninja_deps
+.ninja_log
 
-# --------------------------------------------------
-# Qt Creator
-# --------------------------------------------------
-*.pro.user
-*.pro.user.*
-*.creator
-*.creator.user
-*.creator.user.*
-*.config
-*.files
-*.includes
-*.autosave
-
-# --------------------------------------------------
-# C++ object files
-# --------------------------------------------------
+# =========================
+# Compiled binaries
+# =========================
 *.o
 *.obj
-*.lo
-*.slo
-
-# Libraries
-*.a
-*.lib
 *.so
 *.so.*
-*.dylib
-
-# Executables
+*.a
+*.lib
+*.dll
 *.exe
 *.out
 *.app
-*.elf
-
-# Debug symbols
-*.pdb
-*.idb
 *.dSYM/
 
-# --------------------------------------------------
-# Compiler generated
-# --------------------------------------------------
-*.gcda
-*.gcno
-*.gcov
-*.profraw
-*.profdata
+# =========================
+# Qt Creator
+# =========================
+*.pro.user
+*.pro.user.*
+*.creator.user
+*.creator.user.*
+*.qtc_clangd/
+qtcsettings.cmake
 
-# --------------------------------------------------
-# OS files
-# --------------------------------------------------
-.DS_Store
-Thumbs.db
-desktop.ini
+# Ignore the Qt Creator configuration directory...
+.qtcreator/*
+# ...but keep this .gitignore if you ever add one there
+!.qtcreator/.gitignore
 
-# --------------------------------------------------
+# =========================
+# Clangd / LSP
+# =========================
+.cache/
+.clangd/
+compile_commands.json
+
+# =========================
 # Editors
-# --------------------------------------------------
+# =========================
 .vscode/
 .idea/
 
@@ -89,14 +73,8 @@ desktop.ini
 *.swo
 *~
 
-# --------------------------------------------------
-# Logs
-# --------------------------------------------------
-*.log
-
-# --------------------------------------------------
-# Temporary files
-# --------------------------------------------------
-tmp/
-temp/
-.cache/
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
