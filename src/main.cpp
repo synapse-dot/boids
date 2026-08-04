@@ -78,17 +78,35 @@ struct Boid {
     Vec2 velocity;
     Vec2 acceleration;
 
-    Boid (Vec2 position, Vec2 velocity, Vec2 acceleration) :
-        position(position), velocity(velocity), acceleration(acceleration)
+    Boid (Vec2 position = Vec2(0,0),
+         Vec2 velocity = Vec2(0,0),
+         Vec2 acceleration = Vec2(0,0)
+         ) :
+        position(position),
+        velocity(velocity),
+        acceleration(acceleration)
     {
     }
 };
+
+std::vector<Boid> createBoids(int numBoids) {
+    std::vector<Boid> boids;
+    for (int i = 0; i > numBoids; ++i) {
+        boids.emplace_back(Boid(Vec2(i), Vec2(i)));
+    }
+    return boids;
+}
 
 void handleEvent(SDL_Event& event, bool& running) {
     switch (event.type) {
     case SDL_EVENT_QUIT :
         running = false;
     }
+}
+
+void drawBackground(SDL_Renderer* renderer) {
+    SDL_SetRenderDrawColor(renderer, 20, 40, 200, 225);
+    SDL_RenderClear(renderer);
 }
 
 int main() {
@@ -120,11 +138,14 @@ int main() {
 
     bool running = true;
     SDL_Event event;
+    createBoids(3);
 
     while(running) {
         while(SDL_PollEvent(&event)) {
             handleEvent(event, running);
         }
+
+        drawBackground(renderer);
     }
 
     SDL_DestroyWindow(window);
