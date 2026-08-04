@@ -72,3 +72,60 @@ struct Vec2 {
         return (other.x * x) + (other.y * y);
     }
 };
+
+struct Boid {
+    Vec2 position;
+    Vec2 velocity;
+    Vec2 acceleration;
+
+    Boid (Vec2 position, Vec2 velocity, Vec2 acceleration) :
+        position(position), velocity(velocity), acceleration(acceleration)
+    {
+    }
+};
+
+void handleEvent(SDL_Event& event, bool& running) {
+    switch (event.type) {
+    case SDL_EVENT_QUIT :
+        running = false;
+    }
+}
+
+int main() {
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
+        std::cerr << "SDL_Init failed: " << SDL_GetError() << '\n';
+        return 1;
+    };
+
+    SDL_Window* window = SDL_CreateWindow("Boids",
+                                          600,
+                                          600,
+                                          SDL_WINDOW_RESIZABLE
+                                          );
+
+    if (!window) {
+        std::cerr << "SDL_CreateWindow failed: " << SDL_GetError() << '\n';
+        SDL_Quit();
+        return 1;
+    }
+
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, nullptr);
+
+    if (!renderer) {
+        std::cerr << "SDL_CreateRenderer failed: " << SDL_GetError() << '\n';
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+
+    bool running = true;
+    SDL_Event event;
+
+    while(running) {
+        while(SDL_PollEvent(&event)) {
+            handleEvent(event, running);
+        }
+    }
+
+    return 0;
+}
