@@ -70,6 +70,10 @@ struct Vec2 {
     float dot (const Vec2& other) const {
         return (other.x * x) + (other.y * y);
     }
+
+    Vec2 operator-() const {
+        return Vec2(-(this->x),-(this->y));
+    }
 };
 
 struct Boid {
