@@ -57,18 +57,17 @@ struct Vec2 {
         return (x * x) + (y * y);
     }
 
-    float Magnitude () const {
-        return std::sqrt((x * x)+(y * y));
+    float magnitude () const {
+        return std::sqrt((sqrMagnitude()));
     }
 
-    Vec2 Normalized () const {
-        float magnitude = Magnitude();
-        float normalizedx = x / magnitude;
-        float normalizedy = y / magnitude;
-        return Vec2(normalizedx,normalizedy);
+    Vec2 normalized () const {
+        float length = magnitude();
+        assert(length != 0);
+        return *this / length;
     }
 
-    float Dot (const Vec2& other) const {
+    float dot (const Vec2& other) const {
         return (other.x * x) + (other.y * y);
     }
 };
@@ -91,8 +90,8 @@ struct Boid {
 
 std::vector<Boid> createBoids(int numBoids) {
     std::vector<Boid> boids;
-    for (int i = 0; i > numBoids; ++i) {
-        boids.emplace_back(Boid(Vec2(i), Vec2(i)));
+    for (int i = 0; i < numBoids; ++i) {
+        boids.emplace_back(Boid(Vec2(5.0f * i, 25.0f * i), Vec2(10.0f * i, 20.0f * i)));
     }
     return boids;
 }
@@ -105,8 +104,23 @@ void handleEvent(SDL_Event& event, bool& running) {
 }
 
 void drawBackground(SDL_Renderer* renderer) {
-    SDL_SetRenderDrawColor(renderer, 20, 40, 200, 225);
+    SDL_SetRenderDrawColor(renderer, 12, 18, 38, 255);
     SDL_RenderClear(renderer);
+}
+
+void updateBoid(Boid& boid, float dt) {
+    boid.velocity += boid.acceleration * dt;
+    boid.position += boid.velocity * dt;
+}
+
+void drawBoid(SDL_Renderer* renderer, Boid& boid) {
+    SDL_SetRenderDrawColor(renderer, 240, 240, 255, 255);
+    SDL_FRect rect;
+    rect.x = boid.position.x;
+    rect.y = boid.position.y;
+    rect.w = 10;
+    rect.h = 10;
+    SDL_RenderFillRect(renderer, &rect);
 }
 
 int main() {
@@ -138,7 +152,8 @@ int main() {
 
     bool running = true;
     SDL_Event event;
-    createBoids(3);
+    std::vector boids = createBoids(3);
+    Uint64 previousTime = SDL_GetTicks();
 
     while(running) {
         while(SDL_PollEvent(&event)) {
@@ -146,6 +161,22 @@ int main() {
         }
 
         drawBackground(renderer);
+
+        Uint64 currentTime = SDL_GetTicks();
+        float dt = (currentTime - previousTime)/ 1000.0f;
+        previousTime = currentTime;
+
+        for (Boid& boid : boids) {
+            updateBoid(boid, dt);
+        }
+
+        for (Boid& boid : boids) {
+            drawBoid(renderer, boid);
+        }
+
+        SDL_RenderPresent(renderer);
+
+        SDL_Delay(16);
     }
 
     SDL_DestroyWindow(window);
