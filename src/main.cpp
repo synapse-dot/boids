@@ -1,190 +1,203 @@
-#include <iostream>
 #include <SDL3/SDL.h>
-#include <vector>
+#include <SDL3/SDL_error.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_init.h>
+#include <SDL3/SDL_render.h>
+#include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_timer.h>
+#include <SDL3/SDL_video.h>
+#include <array>
 #include <cmath>
-#include <cassert>
+#include <iostream>
+#include <vector>
 
 struct Vec2 {
-    float x;
-    float y;
+  float x;
+  float y;
 
-    Vec2(float x = 0, float y = 0) : x(x), y(y) {
-    }
+  Vec2(float x = 0, float y = 0) : x(x), y(y) {};
 
-    Vec2 operator* (const float scalar) const {
-        return Vec2(x * scalar, y * scalar);
-    }
+  Vec2 operator+(const Vec2 &other) const {
+    return Vec2(x + other.x, y + other.y);
+  };
 
-    Vec2 operator/ (const float scalar) const {
-        assert(scalar != 0);
-        return Vec2(x / scalar, y / scalar);
-    }
+  Vec2 operator-(const Vec2 &other) const {
+    return Vec2(x - other.x, y - other.y);
+  };
 
-    Vec2 operator+ (const Vec2& other) const {
-        return Vec2(x + other.x, y + other.y);
-    }
+  Vec2 operator*(const float scalar) const {
+    return Vec2(x * scalar, y * scalar);
+  };
 
-    Vec2 operator- (const Vec2& other) const {
-        return Vec2(x - other.x, y - other.y);
-    }
+  Vec2 operator/(const float scalar) const {
+    // When scalar is 0, return <0,0> to avoid division by 0
+    if (scalar == 0.0f) {
+      return Vec2();
+    };
 
-    Vec2& operator+= (const Vec2& other) {
-        x += other.x;
-        y += other.y;
-        return *this;
-    }
+    return Vec2(x / scalar, y / scalar);
+  };
 
-    Vec2& operator-= (const Vec2& other){
-        x -= other.x;
-        y -= other.y;
-        return *this;
-    }
+  Vec2 operator+=(const Vec2 &other) {
+    x += other.x;
+    y += other.y;
+    return *this;
+  };
 
-    Vec2& operator*= (const float scalar) {
-        x *= scalar;
-        y *= scalar;
-        return *this;
-    }
+  Vec2 operator-=(const Vec2 &other) {
+    x -= other.x;
+    y -= other.y;
+    return *this;
+  };
 
-    Vec2& operator/= (const float scalar) {
-        assert(scalar != 0);
-        x /= scalar;
-        y /= scalar;
-        return *this;
-    }
+  Vec2 operator*=(const float scalar) {
+    x *= scalar;
+    y *= scalar;
+    return *this;
+  };
 
-    float sqrMagnitude () const {
-        return (x * x) + (y * y);
-    }
+  Vec2 operator/=(const float scalar) {
+    // Set the vector equal to <0,0> when divided by 0 to avoid errors
+    if (scalar == 0) {
+      x = 0;
+      y = 0;
+    } else {
+      x /= scalar;
+      y /= scalar;
+    };
+    return *this;
+  };
 
-    float magnitude () const {
-        return std::sqrt((sqrMagnitude()));
-    }
+  float Dot(const Vec2 &other) const { return x * other.x + y * other.y; };
 
-    Vec2 normalized () const {
-        float length = magnitude();
-        assert(length != 0);
-        return *this / length;
-    }
+  float MagnitudeSquared() const { return (x * x) + (y * y); };
 
-    float dot (const Vec2& other) const {
-        return (other.x * x) + (other.y * y);
-    }
+  float Magnitude() const { return std::sqrt((x * x) + (y * y)); };
 
-    Vec2 operator-() const {
-        return Vec2(-(this->x),-(this->y));
-    }
+  Vec2 Normalized() const {
+    return (*this)/Magnitude();
+  };
+
+  Vec2 Perpendicular() const { return Vec2(-1.0f * y, x); };
 };
 
 struct Boid {
-    Vec2 position;
-    Vec2 velocity;
-    Vec2 acceleration;
+  Vec2 position;
+  Vec2 velocity;
+  Vec2 acceleration;
 
-    Boid (Vec2 position = Vec2(0,0),
-         Vec2 velocity = Vec2(0,0),
-         Vec2 acceleration = Vec2(0,0)
-         ) :
-        position(position),
-        velocity(velocity),
-        acceleration(acceleration)
-    {
-    }
+  Boid(Vec2 position, Vec2 velocity = Vec2(0, 0),
+       Vec2 acceleration = Vec2(0, 0))
+      : position(position), velocity(velocity), acceleration(acceleration) {};
 };
 
-std::vector<Boid> createBoids(int numBoids) {
-    std::vector<Boid> boids;
-    for (int i = 0; i < numBoids; ++i) {
-        boids.emplace_back(Boid(Vec2(5.0f * i, 25.0f * i), Vec2(10.0f * i, 20.0f * i)));
-    }
-    return boids;
-}
+void HandleEvent(SDL_Event &event, bool &isRunning) {
+  switch (event.type) {
+  case SDL_EVENT_QUIT:
+    isRunning = false;
+    break;
+  };
+};
 
-void handleEvent(SDL_Event& event, bool& running) {
-    switch (event.type) {
-    case SDL_EVENT_QUIT :
-        running = false;
-    }
-}
+std::vector<Boid> CreateBoids(int numBoids) {
+  std::vector<Boid> boids;
+  for (int i = 1; i < (numBoids+1); ++i) {
+    boids.emplace_back(Boid(Vec2(i, (i * 2.0f)), Vec2((i * i), i),
+                            Vec2((i * 0.25f), (i * 0.25f))));
+  };
 
-void drawBackground(SDL_Renderer* renderer) {
-    SDL_SetRenderDrawColor(renderer, 12, 18, 38, 255);
-    SDL_RenderClear(renderer);
-}
+  return boids;
+};
 
-void updateBoid(Boid& boid, float dt) {
-    boid.velocity += boid.acceleration * dt;
-    boid.position += boid.velocity * dt;
-}
+void UpdateBoid(Boid &boid, const float dt) {
+  // Update a boid's velocity and position using semi-implicit Euler method.
+  boid.velocity += boid.acceleration * dt;
+  boid.position += boid.velocity * dt;
+};
 
-void drawBoid(SDL_Renderer* renderer, Boid& boid) {
-    SDL_SetRenderDrawColor(renderer, 240, 240, 255, 255);
-    SDL_FRect rect;
-    rect.x = boid.position.x;
-    rect.y = boid.position.y;
-    rect.w = 10;
-    rect.h = 10;
-    SDL_RenderFillRect(renderer, &rect);
-}
+void RenderBackground(SDL_Renderer *renderer) {
+  SDL_SetRenderDrawColor(renderer, 15, 23, 42, 255);
+  SDL_RenderClear(renderer);
+};
+
+void RenderBoid(SDL_Renderer *renderer, const Boid &boid,
+                float tipLength = 24.0f, float halfWidth = 12.0f) {
+  // The mathematics behind this logic will be explained in
+  // "boids-rendering-maths.tex".
+  Vec2 Dir = boid.velocity.Normalized();
+  Vec2 Normal = Dir.Perpendicular();
+  Vec2 Tip = boid.position - (Dir * tipLength);
+  Vec2 A = boid.position + ((Normal * halfWidth) + (Dir * (tipLength * 0.5f)));
+  Vec2 B = boid.position - ((Normal * halfWidth) + (Dir * (tipLength * 0.5f)));
+
+  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+  SDL_Vertex vertices[3] = {{{Tip.x, Tip.y}, {125, 211, 252, 255}},
+                            {{A.x, A.y}, {125, 211, 252, 255}},
+                            {{B.x, B.y}, {125, 211, 252, 255}}};
+
+  std::array<int, 3> indices = {0, 1, 2};
+  /* if (!SDL_RenderGeometry(renderer, nullptr, vertices, 3, nullptr, 0)) {
+    std::cerr << "SDL_RenderGeometry failed: " << SDL_GetError() << '\n';
+  }; */
+
+  if (!SDL_RenderGeometry(renderer, nullptr, vertices, 3, &indices[0], 3)) {
+    std::cerr << "SDL_RenderGeometry() failed:" << SDL_GetError() << '\n';
+  };
+};
 
 int main() {
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
-        std::cerr << "SDL_Init failed: " << SDL_GetError() << '\n';
-        return 1;
+  if (!SDL_Init(SDL_INIT_VIDEO)) {
+    std::cerr << "SDL_Init() failed: " << SDL_GetError() << '\n';
+    return 1;
+  };
+
+  SDL_Window *window =
+      SDL_CreateWindow("Boids", 600, 600, SDL_WINDOW_RESIZABLE);
+  if (!window) {
+    std::cerr << "SDL_CreateWindow failed: " << SDL_GetError() << '\n';
+    SDL_Quit();
+    return 1;
+  };
+
+  SDL_Renderer *renderer = SDL_CreateRenderer(window, nullptr);
+  if (!renderer) {
+    std::cerr << "SDL_CreateRenderer failed: " << SDL_GetError() << '\n';
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+    return 1;
+  };
+
+  bool isRunning = true;
+  SDL_Event event;
+  std::vector<Boid> boids = CreateBoids(5);
+  float dt;
+  Uint64 currentTime;
+  Uint64 previousTime = SDL_GetTicks();
+
+  while (isRunning) {
+    while (SDL_PollEvent(&event)) {
+      HandleEvent(event, isRunning);
     };
 
-    SDL_Window* window = SDL_CreateWindow("Boids",
-                                          600,
-                                          600,
-                                          SDL_WINDOW_RESIZABLE
-                                          );
+    currentTime = SDL_GetTicks();
+    dt = (currentTime - previousTime) / 1000.0f;
+    previousTime = currentTime;
 
-    if (!window) {
-        std::cerr << "SDL_CreateWindow failed: " << SDL_GetError() << '\n';
-        SDL_Quit();
-        return 1;
-    }
+    for (Boid &boid : boids) {
+      UpdateBoid(boid, dt);
+    };
 
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, nullptr);
+    RenderBackground(renderer);
+    for (const Boid &boid : boids) {
+      RenderBoid(renderer, boid);
+    };
 
-    if (!renderer) {
-        std::cerr << "SDL_CreateRenderer failed: " << SDL_GetError() << '\n';
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
+    SDL_RenderPresent(renderer);
+    SDL_Delay(16);
+  };
 
-    bool running = true;
-    SDL_Event event;
-    std::vector boids = createBoids(3);
-    Uint64 previousTime = SDL_GetTicks();
-
-    while(running) {
-        while(SDL_PollEvent(&event)) {
-            handleEvent(event, running);
-        }
-
-        drawBackground(renderer);
-
-        Uint64 currentTime = SDL_GetTicks();
-        float dt = (currentTime - previousTime)/ 1000.0f;
-        previousTime = currentTime;
-
-        for (Boid& boid : boids) {
-            updateBoid(boid, dt);
-        }
-
-        for (Boid& boid : boids) {
-            drawBoid(renderer, boid);
-        }
-
-        SDL_RenderPresent(renderer);
-
-        SDL_Delay(16);
-    }
-
-    SDL_DestroyWindow(window);
-    SDL_DestroyRenderer(renderer);
-    SDL_Quit();
-    return 0;
-}
+  SDL_DestroyRenderer(renderer);
+  SDL_DestroyWindow(window);
+  SDL_Quit();
+  return 0;
+};
