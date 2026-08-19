@@ -114,8 +114,8 @@ std::vector<Boid> CreateBoids(int numBoids) {
 };
 
 std::vector<Boid *> GetBoidsInView(const Boid &boid, std::vector<Boid> &boids,
-                                   float perceptionRadius = 250.0f,
-                                   float cosHalfRange = 0.5f) {
+                                   float perceptionRadius = 180.0f,
+                                   float cosHalfRange = 0.65f) {
   std::vector<Boid *> boidsPercieved;
   for (Boid &other : boids) {
     Vec2 distVector = other.position - boid.position;
@@ -140,12 +140,12 @@ void LimitMagnitude(Vec2 &v, const float maxMagnitude) {
 };
 
 void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
-                const float cohesionStrength = 3.0f, const float weightA = 1.0f,
-                const float weightC = 0.5f, const float weightS = 1.5f,
+                const float cohesionStrength = 2.5f, const float weightA = 0.9f,
+                const float weightC = 0.35f, const float weightS = 2.0f,
                 const float boidMass = 1.0f,
-                const float separationRadius = 50.0f,
-                const float maxSpeed = 100.0f,
-                const float maxAcceleration = 150.0f, const int height = 600,
+                const float separationRadius = 35.0f,
+                const float maxSpeed = 140.0f,
+                const float maxAcceleration = 250.0f, const int height = 600,
                 const int width = 600) {
 
   // std::cout << "No. of boids percieved by me (" << &boid << " ): " <<
@@ -217,7 +217,7 @@ void RenderBackground(SDL_Renderer *renderer) {
 };
 
 void RenderBoid(SDL_Renderer *renderer, const Boid &boid,
-                float tipLength = 24.0f, float halfWidth = 12.0f) {
+                float tipLength = 18.0f, float halfWidth = 9.0f) {
   // The mathematics behind this logic will be explained in
   // "boids-rendering-maths.tex".
   Vec2 Dir = boid.velocity.Normalized();
@@ -226,10 +226,10 @@ void RenderBoid(SDL_Renderer *renderer, const Boid &boid,
   Vec2 A = boid.position + ((Normal * halfWidth) + (Dir * (tipLength * 0.5f)));
   Vec2 B = boid.position - ((Normal * halfWidth) + (Dir * (tipLength * 0.5f)));
 
-  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-  SDL_Vertex vertices[3] = {{{Tip.x, Tip.y}, {125, 211, 252, 255}},
-                            {{A.x, A.y}, {125, 211, 252, 255}},
-                            {{B.x, B.y}, {125, 211, 252, 255}}};
+  SDL_SetRenderDrawColor(renderer, 255, 180, 100, 255);
+  SDL_Vertex vertices[3] = {{{Tip.x, Tip.y}, {255, 180, 100, 255}},
+                            {{A.x, A.y}, {255, 180, 100, 255}},
+                            {{B.x, B.y}, {255, 180, 100, 255}}};
 
   std::array<int, 3> indices = {0, 1, 2};
   if (!SDL_RenderGeometry(renderer, nullptr, vertices, 3, &indices[0], 3)) {
@@ -261,7 +261,7 @@ int main() {
 
   bool isRunning = true;
   SDL_Event event;
-  std::vector<Boid> boids = CreateBoids(25);
+  std::vector<Boid> boids = CreateBoids(50);
   float dt;
   Uint64 currentTime;
   Uint64 previousTime = SDL_GetTicks();
