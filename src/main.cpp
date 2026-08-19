@@ -133,7 +133,8 @@ std::vector<Boid *> GetBoidsInView(const Boid &boid, std::vector<Boid> &boids,
 };
 
 void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
-                float taua = 2.0f, float tauc = 2.0f) {
+                float cohesionStrength = 3.0f, float weightA = 1.0f,
+                float weightC = 1.0f, float weightS = 1.0f) {
 
   // std::cout << "No. of boids percieved by me ("<< &boid << " ): " <<
   // boidsPercieved.size() << '\n'; 01. Aligment
@@ -143,7 +144,7 @@ void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
   };
 
   Vec2 avgFlockVelocity = sumVelocities / boidsPercieved.size();
-  Vec2 alignmentAcceleration = (boid.velocity - avgFlockVelocity) / taua;
+  Vec2 alignmentSteeringForce = (boid.velocity - avgFlockVelocity);
 
   // 02. Cohesion
   Vec2 sumPos = 0;
@@ -151,9 +152,11 @@ void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
     sumPos += b->position;
   };
   Vec2 centre = sumPos / boidsPercieved.size();
-  Vec2 cohesionAcceleration = (centre - boid.position) / (tauc * tauc);
+  Vec2 cohesionSteeringForce =
+      (centre - boid.position).Normalized() * cohesionStrength;
 
-  boid.acceleration = alignmentAcceleration + cohesionAcceleration;
+  Vec2 steeringForce =
+      alignmentSteeringForce * weightA + cohesionSteeringForce * weightC;
 
   // Update a boid's velocity and position using semi-implicit Euler method.
   boid.velocity += boid.acceleration * dt;
