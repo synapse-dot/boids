@@ -9,6 +9,7 @@
 #include <array>
 #include <cmath>
 #include <iostream>
+#include <iterator>
 #include <random>
 #include <vector>
 
@@ -39,25 +40,25 @@ struct Vec2 {
     return Vec2(x / scalar, y / scalar);
   };
 
-  Vec2 operator+=(const Vec2 &other) {
+  Vec2 &operator+=(const Vec2 &other) {
     x += other.x;
     y += other.y;
     return *this;
   };
 
-  Vec2 operator-=(const Vec2 &other) {
+  Vec2 &operator-=(const Vec2 &other) {
     x -= other.x;
     y -= other.y;
     return *this;
   };
 
-  Vec2 operator*=(const float scalar) {
+  Vec2 &operator*=(const float scalar) {
     x *= scalar;
     y *= scalar;
     return *this;
   };
 
-  Vec2 operator/=(const float scalar) {
+  Vec2 &operator/=(const float scalar) {
     // Set the vector equal to <0,0> when divided by 0 to avoid errors
     if (scalar == 0) {
       x = 0;
@@ -105,9 +106,9 @@ std::vector<Boid> CreateBoids(int numBoids) {
   std::uniform_real_distribution<float> distPos(0, 1000);
   std::uniform_real_distribution<float> distVel(-20, 20);
 
-  for (int i = 1; i < (numBoids + 1); ++i) {
-    boids.emplace_back(Boid(Vec2(distPos(gen), distPos(gen)),
-                            Vec2(distVel(gen), distVel(gen))));
+  for (int i = 0; i < numBoids; ++i) {
+    boids.emplace_back(Vec2(distPos(gen), distPos(gen)),
+                       Vec2(distVel(gen), distVel(gen)));
   };
 
   return boids;
@@ -116,7 +117,7 @@ std::vector<Boid> CreateBoids(int numBoids) {
 std::vector<Boid *> GetBoidsInView(const Boid &boid, std::vector<Boid> &boids,
                                    float perceptionRadius = 180.0f,
                                    float cosHalfRange = 0.65f) {
-  std::vector<Boid *> boidsPercieved;
+  std::vector<Boid *> boidsPerceived;
   for (Boid &other : boids) {
     Vec2 distVector = other.position - boid.position;
     if ((&boid != &other) && (distVector.MagnitudeSquared() <=
@@ -125,11 +126,11 @@ std::vector<Boid *> GetBoidsInView(const Boid &boid, std::vector<Boid> &boids,
            (boid.velocity.Magnitude() * distVector.Magnitude())) >=
           cosHalfRange) {
         Boid *ptrOther = &other;
-        boidsPercieved.push_back(ptrOther);
+        boidsPerceived.push_back(ptrOther);
       };
     };
   };
-  return boidsPercieved;
+  return boidsPerceived;
 };
 
 void LimitMagnitude(Vec2 &v, const float maxMagnitude) {
@@ -139,51 +140,58 @@ void LimitMagnitude(Vec2 &v, const float maxMagnitude) {
   };
 };
 
-void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
-                const float cohesionStrength = 2.5f, const float weightA = 0.9f,
-                const float weightC = 0.35f, const float weightS = 2.0f,
-                const float boidMass = 1.0f,
-                const float separationRadius = 35.0f,
-                const float maxSpeed = 140.0f,
-                const float maxAcceleration = 250.0f, const int height = 1000,
-                const int width = 1000) {
+void UpdateBoidAcceleration(Boid &boid, std::vector<Boid *> &boidsPerceived,
+                            const float cohesionStrength = 2.5f,
+                            const float weightA = 0.9f,
+                            const float weightC = 0.35f,
+                            const float weightS = 2.0f,
+                            const float boidMass = 1.0f,
+                            const float separationRadius = 35.0f,
+                            const float maxAcceleration = 250.0f) {
 
   // std::cout << "No. of boids percieved by me (" << &boid << " ): " <<
   // boidsPercieved.size() << '\n';
-
-  // 01. Aligment
-  Vec2 sumVelocities(0, 0);
-  for (Boid *b : boidsPercieved) {
-    sumVelocities += b->velocity;
-  };
-
-  Vec2 avgFlockVelocity = sumVelocities / boidsPercieved.size();
-  Vec2 alignmentSteeringForce = (avgFlockVelocity - boid.velocity);
-
-  // 02. Cohesion
-  Vec2 sumPos = 0;
-  for (Boid *b : boidsPercieved) {
-    sumPos += b->position;
-  };
-  Vec2 centre = sumPos / boidsPercieved.size();
-  Vec2 cohesionSteeringForce =
-      (centre - boid.position).Normalized() * cohesionStrength;
-
-  // 03. Separation
-  Vec2 separationSteeringForce(0, 0);
-  for (Boid *b : boidsPercieved) {
-    Vec2 displacement = boid.position - b->position;
-    if (displacement.Magnitude() <= separationRadius) {
-      separationSteeringForce += displacement / displacement.MagnitudeSquared();
+  boid.acceleration = Vec2(0, 0);
+  if (!std::empty(boidsPerceived)) {
+    // 01. Aligment
+    Vec2 sumVelocities(0, 0);
+    for (Boid *b : boidsPerceived) {
+      sumVelocities += b->velocity;
     };
-  };
 
-  Vec2 steeringForce = alignmentSteeringForce * weightA +
-                       cohesionSteeringForce * weightC +
-                       separationSteeringForce * weightS;
+    Vec2 avgFlockVelocity = sumVelocities / boidsPerceived.size();
+    Vec2 alignmentSteeringForce = (avgFlockVelocity - boid.velocity);
 
-  boid.acceleration = steeringForce / boidMass;
+    // 02. Cohesion
+    Vec2 sumPos(0, 0);
+    for (Boid *b : boidsPerceived) {
+      sumPos += b->position;
+    };
+    Vec2 centre = sumPos / boidsPerceived.size();
+    Vec2 cohesionSteeringForce =
+        (centre - boid.position).Normalized() * cohesionStrength;
+
+    // 03. Separation
+    Vec2 separationSteeringForce(0, 0);
+    for (Boid *b : boidsPerceived) {
+      Vec2 displacement = boid.position - b->position;
+      float distanceSquared = displacement.MagnitudeSquared();
+      if (distanceSquared <= separationRadius * separationRadius) {
+        separationSteeringForce += displacement / distanceSquared;
+      };
+    };
+
+    Vec2 steeringForce = alignmentSteeringForce * weightA +
+                         cohesionSteeringForce * weightC +
+                         separationSteeringForce * weightS;
+
+    boid.acceleration = steeringForce / boidMass;
+  }
   LimitMagnitude(boid.acceleration, maxAcceleration);
+}
+
+void UpdateBoid(Boid &boid, const float dt, const int width = 1000,
+                const int height = 1000, const float maxSpeed = 140.0f) {
 
   // Update a boid's velocity and position using semi-implicit Euler method.
   boid.velocity += boid.acceleration * dt;
@@ -194,12 +202,12 @@ void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
   if (boid.position.x >= width) {
     boid.position.x -= width;
   } else if (boid.position.x <= 0) {
-    boid.position.x = width - boid.position.x;
+    boid.position.x = boid.position.x + width;
   };
   if (boid.position.y >= height) {
     boid.position.y -= height;
   } else if (boid.position.y <= 0) {
-    boid.position.y = height - boid.position.y;
+    boid.position.y = height + boid.position.y;
   };
   /*
     std::cout << "I experienced steering force / acceleration <"
@@ -277,7 +285,11 @@ int main() {
 
     for (Boid &boid : boids) {
       std::vector<Boid *> boidsPercieved = GetBoidsInView(boid, boids);
-      UpdateBoid(boid, dt, boidsPercieved);
+      UpdateBoidAcceleration(boid, boidsPercieved);
+    };
+
+    for (Boid &boid : boids) {
+      UpdateBoid(boid, dt);
     };
 
     RenderBackground(renderer);
