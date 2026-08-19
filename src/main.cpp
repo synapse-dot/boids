@@ -100,7 +100,7 @@ void HandleEvent(SDL_Event &event, bool &isRunning) {
 std::vector<Boid> CreateBoids(int numBoids) {
   std::vector<Boid> boids;
   for (int i = 1; i < (numBoids + 1); ++i) {
-    boids.emplace_back(Boid(Vec2(i, (i * 2.0f)), Vec2((i * i), i)));
+    boids.emplace_back(Boid(Vec2(45.2 * i, (i * 25.0f)), Vec2((i * i), i)));
   };
 
   return boids;
@@ -108,7 +108,7 @@ std::vector<Boid> CreateBoids(int numBoids) {
 
 std::vector<Boid *> GetBoidsInView(const Boid &boid, std::vector<Boid> &boids,
                                    float perceptionRadius = 100.0f,
-                                   float cosHalfRange = 0.866f) {
+                                   float cosHalfRange = 0.5f) {
   std::vector<Boid *> boidsPercieved;
   for (Boid &other : boids) {
     Vec2 distVector = other.position - boid.position;
@@ -125,7 +125,19 @@ std::vector<Boid *> GetBoidsInView(const Boid &boid, std::vector<Boid> &boids,
   return boidsPercieved;
 };
 
-void UpdateBoid(Boid &boid, const float dt) {
+void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
+                float tau = 1) {
+  // 01. Aligment
+  Vec2 sumVelocities(0, 0);
+  for (Boid *b : boidsPercieved) {
+    sumVelocities += b->velocity;
+  };
+
+  Vec2 avgFlockVelocity = sumVelocities / boidsPercieved.size();
+  Vec2 steeringAcceleration = (boid.velocity - avgFlockVelocity) / tau;
+
+  boid.acceleration = steeringAcceleration;
+
   // Update a boid's velocity and position using semi-implicit Euler method.
   boid.velocity += boid.acceleration * dt;
   boid.position += boid.velocity * dt;
@@ -181,7 +193,7 @@ int main() {
 
   bool isRunning = true;
   SDL_Event event;
-  std::vector<Boid> boids = CreateBoids(5);
+  std::vector<Boid> boids = CreateBoids(25);
   float dt;
   Uint64 currentTime;
   Uint64 previousTime = SDL_GetTicks();
@@ -196,7 +208,8 @@ int main() {
     previousTime = currentTime;
 
     for (Boid &boid : boids) {
-      UpdateBoid(boid, dt);
+      std::vector<Boid *> boidsPercieved = GetBoidsInView(boid, boids);
+      UpdateBoid(boid, dt, boidsPercieved);
     };
 
     RenderBackground(renderer);
