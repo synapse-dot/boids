@@ -133,11 +133,13 @@ std::vector<Boid *> GetBoidsInView(const Boid &boid, std::vector<Boid> &boids,
 };
 
 void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
-                float cohesionStrength = 3.0f, float weightA = 1.0f,
-                float weightC = 1.0f, float weightS = 1.0f) {
+                const float cohesionStrength = 3.0f, const float weightA = 1.0f,
+                const float weightC = 0.3f, const float weightS = 1.5f,
+                const float boidMass = 1.0f) {
 
-  // std::cout << "No. of boids percieved by me ("<< &boid << " ): " <<
-  // boidsPercieved.size() << '\n'; 01. Aligment
+  std::cout << "No. of boids percieved by me (" << &boid
+            << " ): " << boidsPercieved.size() << '\n';
+  // 01. Aligment
   Vec2 sumVelocities(0, 0);
   for (Boid *b : boidsPercieved) {
     sumVelocities += b->velocity;
@@ -158,12 +160,14 @@ void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
   Vec2 steeringForce =
       alignmentSteeringForce * weightA + cohesionSteeringForce * weightC;
 
+  Vec2 acceleration = steeringForce / boidMass;
+
   // Update a boid's velocity and position using semi-implicit Euler method.
   boid.velocity += boid.acceleration * dt;
   boid.position += boid.velocity * dt;
 
-  // std::cout << "My position: <" << boid.position.x <<", " << boid.position.y
-  // << "> \n \n";
+  std::cout << "My position: <" << boid.position.x << ", " << boid.position.y
+            << "> \n \n";
 };
 
 void RenderBackground(SDL_Renderer *renderer) {
