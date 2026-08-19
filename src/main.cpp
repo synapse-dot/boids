@@ -114,11 +114,35 @@ std::vector<Boid> CreateBoids(int numBoids) {
   return boids;
 };
 
-std::vector<Boid *> GetBoidsInView(const Boid &boid, std::vector<Boid> &boids,
-                                   float perceptionRadius = 180.0f,
-                                   float cosHalfRange = 0.65f) {
+std::vector<Boid *> GetBoidsInView(Boid &boid, std::vector<Boid> &boids,
+                                   const float perceptionRadius = 180.0f,
+                                   const float cosHalfRange = 0.65f,
+                                   const float width = 1000.0f,
+                                   const float height = 1000.0f) {
+
+  if (boid.position.x >= width) {
+    boid.position.x -= width;
+  } else if (boid.position.x <= 0) {
+    boid.position.x = boid.position.x + width;
+  };
+  if (boid.position.y >= height) {
+    boid.position.y -= height;
+  } else if (boid.position.y <= 0) {
+    boid.position.y = height + boid.position.y;
+  };
   std::vector<Boid *> boidsPerceived;
   for (Boid &other : boids) {
+    if (other.position.x >= width) {
+      other.position.x -= width;
+    } else if (other.position.x <= 0) {
+      other.position.x = other.position.x + width;
+    };
+    if (other.position.y >= height) {
+      other.position.y -= height;
+    } else if (other.position.y <= 0) {
+      other.position.y = height + other.position.y;
+    };
+
     Vec2 distVector = other.position - boid.position;
     if ((&boid != &other) && (distVector.MagnitudeSquared() <=
                               perceptionRadius * perceptionRadius)) {
@@ -284,8 +308,8 @@ int main() {
     previousTime = currentTime;
 
     for (Boid &boid : boids) {
-      std::vector<Boid *> boidsPercieved = GetBoidsInView(boid, boids);
-      UpdateBoidAcceleration(boid, boidsPercieved);
+      std::vector<Boid *> boidsPerceived = GetBoidsInView(boid, boids);
+      UpdateBoidAcceleration(boid, boidsPerceived);
     };
 
     for (Boid &boid : boids) {
