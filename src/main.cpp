@@ -9,6 +9,7 @@
 #include <array>
 #include <cmath>
 #include <iostream>
+#include <random>
 #include <vector>
 
 struct Vec2 {
@@ -99,8 +100,14 @@ void HandleEvent(SDL_Event &event, bool &isRunning) {
 
 std::vector<Boid> CreateBoids(int numBoids) {
   std::vector<Boid> boids;
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<float> distPos(0, 600);
+  std::uniform_real_distribution<float> distVel(-5, 5);
+
   for (int i = 1; i < (numBoids + 1); ++i) {
-    boids.emplace_back(Boid(Vec2(45.2 * i, (i * 25.0f)), Vec2((i * i), i)));
+    boids.emplace_back(Boid(Vec2(distPos(gen), distPos(gen)),
+                            Vec2(distVel(gen), distVel(gen))));
   };
 
   return boids;
@@ -126,7 +133,7 @@ std::vector<Boid *> GetBoidsInView(const Boid &boid, std::vector<Boid> &boids,
 };
 
 void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
-                float tau = 1) {
+                float tau = 2) {
   // 01. Aligment
   Vec2 sumVelocities(0, 0);
   for (Boid *b : boidsPercieved) {
