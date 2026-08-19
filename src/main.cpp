@@ -114,7 +114,7 @@ std::vector<Boid> CreateBoids(int numBoids) {
 };
 
 std::vector<Boid *> GetBoidsInView(const Boid &boid, std::vector<Boid> &boids,
-                                   float perceptionRadius = 100.0f,
+                                   float perceptionRadius = 250.0f,
                                    float cosHalfRange = 0.5f) {
   std::vector<Boid *> boidsPercieved;
   for (Boid &other : boids) {
@@ -133,21 +133,34 @@ std::vector<Boid *> GetBoidsInView(const Boid &boid, std::vector<Boid> &boids,
 };
 
 void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
-                float tau = 2) {
-  // 01. Aligment
+                float taua = 2.0f, float tauc = 2.0f) {
+
+  // std::cout << "No. of boids percieved by me ("<< &boid << " ): " <<
+  // boidsPercieved.size() << '\n'; 01. Aligment
   Vec2 sumVelocities(0, 0);
   for (Boid *b : boidsPercieved) {
     sumVelocities += b->velocity;
   };
 
   Vec2 avgFlockVelocity = sumVelocities / boidsPercieved.size();
-  Vec2 steeringAcceleration = (boid.velocity - avgFlockVelocity) / tau;
+  Vec2 alignmentAcceleration = (boid.velocity - avgFlockVelocity) / taua;
 
-  boid.acceleration = steeringAcceleration;
+  // 02. Cohesion
+  Vec2 sumPos = 0;
+  for (Boid *b : boidsPercieved) {
+    sumPos += b->position;
+  };
+  Vec2 centre = sumPos / boidsPercieved.size();
+  Vec2 cohesionAcceleration = (centre - boid.position) / (tauc * tauc);
+
+  boid.acceleration = alignmentAcceleration + cohesionAcceleration;
 
   // Update a boid's velocity and position using semi-implicit Euler method.
   boid.velocity += boid.acceleration * dt;
   boid.position += boid.velocity * dt;
+
+  // std::cout << "My position: <" << boid.position.x <<", " << boid.position.y
+  // << "> \n \n";
 };
 
 void RenderBackground(SDL_Renderer *renderer) {
