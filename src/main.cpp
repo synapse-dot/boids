@@ -134,11 +134,13 @@ std::vector<Boid *> GetBoidsInView(const Boid &boid, std::vector<Boid> &boids,
 
 void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
                 const float cohesionStrength = 3.0f, const float weightA = 1.0f,
-                const float weightC = 0.3f, const float weightS = 1.5f,
-                const float boidMass = 1.0f) {
+                const float weightC = 0.5f, const float weightS = 1.5f,
+                const float boidMass = 1.0f,
+                const float separationRadius = 50.0f) {
 
   std::cout << "No. of boids percieved by me (" << &boid
             << " ): " << boidsPercieved.size() << '\n';
+
   // 01. Aligment
   Vec2 sumVelocities(0, 0);
   for (Boid *b : boidsPercieved) {
@@ -157,15 +159,29 @@ void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
   Vec2 cohesionSteeringForce =
       (centre - boid.position).Normalized() * cohesionStrength;
 
-  Vec2 steeringForce =
-      alignmentSteeringForce * weightA + cohesionSteeringForce * weightC;
+  // 03. Separation
+  Vec2 separationSteeringForce(0, 0);
+  for (Boid *b : boidsPercieved) {
+    Vec2 displacement = boid.position - b->position;
+    if (displacement.Magnitude() <= separationRadius) {
+      separationSteeringForce = displacement / displacement.MagnitudeSquared();
+    };
+  };
 
-  Vec2 acceleration = steeringForce / boidMass;
+  Vec2 steeringForce = alignmentSteeringForce * weightA +
+                       cohesionSteeringForce * weightC +
+                       separationSteeringForce * weightS;
+
+  boid.acceleration = steeringForce / boidMass;
 
   // Update a boid's velocity and position using semi-implicit Euler method.
   boid.velocity += boid.acceleration * dt;
   boid.position += boid.velocity * dt;
 
+  std::cout << "I experienced steering force / acceleration <"
+            << boid.acceleration.x << ", " << boid.acceleration.y << "> \n \n";
+  std::cout << "My velocity: <" << boid.velocity.x << ", " << boid.velocity.y
+            << "> \n \n";
   std::cout << "My position: <" << boid.position.x << ", " << boid.position.y
             << "> \n \n";
 };
