@@ -132,11 +132,20 @@ std::vector<Boid *> GetBoidsInView(const Boid &boid, std::vector<Boid> &boids,
   return boidsPercieved;
 };
 
+void LimitMagnitude(Vec2 &v, const float maxMagnitude) {
+  float magnitudeSquared = v.MagnitudeSquared();
+  if (magnitudeSquared > maxMagnitude * maxMagnitude) {
+    v = v.Normalized() * maxMagnitude;
+  };
+};
+
 void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
                 const float cohesionStrength = 3.0f, const float weightA = 1.0f,
                 const float weightC = 0.5f, const float weightS = 1.5f,
                 const float boidMass = 1.0f,
-                const float separationRadius = 50.0f) {
+                const float separationRadius = 50.0f,
+                const float maxSpeed = 100.0f,
+                const float maxAcceleration = 150.0f) {
 
   // std::cout << "No. of boids percieved by me (" << &boid << " ): " <<
   // boidsPercieved.size() << '\n';
@@ -173,9 +182,11 @@ void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
                        separationSteeringForce * weightS;
 
   boid.acceleration = steeringForce / boidMass;
+  LimitMagnitude(boid.acceleration, maxAcceleration);
 
   // Update a boid's velocity and position using semi-implicit Euler method.
   boid.velocity += boid.acceleration * dt;
+  LimitMagnitude(boid.velocity, maxSpeed);
   boid.position += boid.velocity * dt;
   /*
     std::cout << "I experienced steering force / acceleration <"
