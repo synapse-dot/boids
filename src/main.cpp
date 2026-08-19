@@ -119,31 +119,19 @@ std::vector<Boid *> GetBoidsInView(Boid &boid, std::vector<Boid> &boids,
                                    const float cosHalfRange = 0.65f,
                                    const float width = 1000.0f,
                                    const float height = 1000.0f) {
-
-  if (boid.position.x >= width) {
-    boid.position.x -= width;
-  } else if (boid.position.x <= 0) {
-    boid.position.x = boid.position.x + width;
-  };
-  if (boid.position.y >= height) {
-    boid.position.y -= height;
-  } else if (boid.position.y <= 0) {
-    boid.position.y = height + boid.position.y;
-  };
   std::vector<Boid *> boidsPerceived;
   for (Boid &other : boids) {
-    if (other.position.x >= width) {
-      other.position.x -= width;
-    } else if (other.position.x <= 0) {
-      other.position.x = other.position.x + width;
-    };
-    if (other.position.y >= height) {
-      other.position.y -= height;
-    } else if (other.position.y <= 0) {
-      other.position.y = height + other.position.y;
-    };
-
     Vec2 distVector = other.position - boid.position;
+    if (distVector.x > width / 2) {
+      distVector.x -= width;
+    } else if (distVector.x < -width / 2) {
+      distVector.x += width;
+    }
+    if (distVector.y > height / 2) {
+      distVector.y -= height;
+    } else if (distVector.y < -height / 2) {
+      distVector.x += height;
+    }
     if ((&boid != &other) && (distVector.MagnitudeSquared() <=
                               perceptionRadius * perceptionRadius)) {
       if ((boid.velocity.Dot(distVector) /
@@ -164,14 +152,13 @@ void LimitMagnitude(Vec2 &v, const float maxMagnitude) {
   };
 };
 
-void UpdateBoidAcceleration(Boid &boid, std::vector<Boid *> &boidsPerceived,
-                            const float cohesionStrength = 2.5f,
-                            const float weightA = 0.9f,
-                            const float weightC = 0.35f,
-                            const float weightS = 2.0f,
-                            const float boidMass = 1.0f,
-                            const float separationRadius = 35.0f,
-                            const float maxAcceleration = 250.0f) {
+void UpdateBoidAcceleration(
+    Boid &boid, std::vector<Boid *> &boidsPerceived,
+    const float cohesionStrength = 2.5f, const float weightA = 0.9f,
+    const float weightC = 0.35f, const float weightS = 2.0f,
+    const float boidMass = 1.0f, const float separationRadius = 35.0f,
+    const float maxAcceleration = 250.0f, const float width = 1000,
+    const float height = 1000) {
 
   // std::cout << "No. of boids percieved by me (" << &boid << " ): " <<
   // boidsPercieved.size() << '\n';
@@ -192,16 +179,37 @@ void UpdateBoidAcceleration(Boid &boid, std::vector<Boid *> &boidsPerceived,
       sumPos += b->position;
     };
     Vec2 centre = sumPos / boidsPerceived.size();
-    Vec2 cohesionSteeringForce =
-        (centre - boid.position).Normalized() * cohesionStrength;
+    Vec2 distCentre = centre - boid.position;
+
+    if (distCentre.x > width / 2) {
+      distCentre.x -= width;
+    } else if (distCentre.x < -width / 2) {
+      distCentre.x += width;
+    }
+    if (distCentre.y > height / 2) {
+      distCentre.y -= height;
+    } else if (distCentre.y < -height / 2) {
+      distCentre.x += height;
+    }
+    Vec2 cohesionSteeringForce = distCentre.Normalized() * cohesionStrength;
 
     // 03. Separation
     Vec2 separationSteeringForce(0, 0);
     for (Boid *b : boidsPerceived) {
-      Vec2 displacement = boid.position - b->position;
-      float distanceSquared = displacement.MagnitudeSquared();
+      Vec2 distVector = boid.position - b->position;
+      if (distVector.x > width / 2) {
+        distVector.x -= width;
+      } else if (distVector.x < -width / 2) {
+        distVector.x += width;
+      }
+      if (distVector.y > height / 2) {
+        distVector.y -= height;
+      } else if (distVector.y < -height / 2) {
+        distVector.x += height;
+      }
+      float distanceSquared = distVector.MagnitudeSquared();
       if (distanceSquared <= separationRadius * separationRadius) {
-        separationSteeringForce += displacement / distanceSquared;
+        separationSteeringForce += distVector / distanceSquared;
       };
     };
 
@@ -293,7 +301,7 @@ int main() {
 
   bool isRunning = true;
   SDL_Event event;
-  std::vector<Boid> boids = CreateBoids(50);
+  std::vector<Boid> boids = CreateBoids(30);
   float dt;
   Uint64 currentTime;
   Uint64 previousTime = SDL_GetTicks();
