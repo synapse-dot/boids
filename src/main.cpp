@@ -102,8 +102,8 @@ std::vector<Boid> CreateBoids(int numBoids) {
   std::vector<Boid> boids;
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::uniform_real_distribution<float> distPos(0, 600);
-  std::uniform_real_distribution<float> distVel(-5, 5);
+  std::uniform_real_distribution<float> distPos(0, 1000);
+  std::uniform_real_distribution<float> distVel(-20, 20);
 
   for (int i = 1; i < (numBoids + 1); ++i) {
     boids.emplace_back(Boid(Vec2(distPos(gen), distPos(gen)),
@@ -145,8 +145,8 @@ void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
                 const float boidMass = 1.0f,
                 const float separationRadius = 35.0f,
                 const float maxSpeed = 140.0f,
-                const float maxAcceleration = 250.0f, const int height = 600,
-                const int width = 600) {
+                const float maxAcceleration = 250.0f, const int height = 1000,
+                const int width = 1000) {
 
   // std::cout << "No. of boids percieved by me (" << &boid << " ): " <<
   // boidsPercieved.size() << '\n';
@@ -158,7 +158,7 @@ void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
   };
 
   Vec2 avgFlockVelocity = sumVelocities / boidsPercieved.size();
-  Vec2 alignmentSteeringForce = (boid.velocity - avgFlockVelocity);
+  Vec2 alignmentSteeringForce = (avgFlockVelocity - boid.velocity);
 
   // 02. Cohesion
   Vec2 sumPos = 0;
@@ -244,7 +244,7 @@ int main() {
   };
 
   SDL_Window *window =
-      SDL_CreateWindow("Boids", 600, 600, SDL_WINDOW_RESIZABLE);
+      SDL_CreateWindow("Boids", 1000, 1000, SDL_WINDOW_RESIZABLE);
   if (!window) {
     std::cerr << "SDL_CreateWindow failed: " << SDL_GetError() << '\n';
     SDL_Quit();
