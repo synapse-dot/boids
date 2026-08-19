@@ -145,7 +145,8 @@ void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
                 const float boidMass = 1.0f,
                 const float separationRadius = 50.0f,
                 const float maxSpeed = 100.0f,
-                const float maxAcceleration = 150.0f) {
+                const float maxAcceleration = 150.0f, const int height = 600,
+                const int width = 600) {
 
   // std::cout << "No. of boids percieved by me (" << &boid << " ): " <<
   // boidsPercieved.size() << '\n';
@@ -188,6 +189,18 @@ void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
   boid.velocity += boid.acceleration * dt;
   LimitMagnitude(boid.velocity, maxSpeed);
   boid.position += boid.velocity * dt;
+
+  // Wrap Around
+  if (boid.position.x >= width) {
+    boid.position.x -= width;
+  } else if (boid.position.x <= 0) {
+    boid.position.x = width - boid.position.x;
+  };
+  if (boid.position.y >= height) {
+    boid.position.y -= height;
+  } else if (boid.position.y <= 0) {
+    boid.position.y = height - boid.position.y;
+  };
   /*
     std::cout << "I experienced steering force / acceleration <"
               << boid.acceleration.x << ", " << boid.acceleration.y << "> \n
