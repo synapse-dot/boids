@@ -74,9 +74,7 @@ struct Vec2 {
 
   float Magnitude() const { return std::sqrt((x * x) + (y * y)); };
 
-  Vec2 Normalized() const {
-    return (*this)/Magnitude();
-  };
+  Vec2 Normalized() const { return (*this) / Magnitude(); };
 
   Vec2 Perpendicular() const { return Vec2(-1.0f * y, x); };
 };
@@ -101,12 +99,30 @@ void HandleEvent(SDL_Event &event, bool &isRunning) {
 
 std::vector<Boid> CreateBoids(int numBoids) {
   std::vector<Boid> boids;
-  for (int i = 1; i < (numBoids+1); ++i) {
-    boids.emplace_back(Boid(Vec2(i, (i * 2.0f)), Vec2((i * i), i),
-                            Vec2((i * 0.25f), (i * 0.25f))));
+  for (int i = 1; i < (numBoids + 1); ++i) {
+    boids.emplace_back(Boid(Vec2(i, (i * 2.0f)), Vec2((i * i), i)));
   };
 
   return boids;
+};
+
+std::vector<Boid *> GetBoidsInView(const Boid &boid, std::vector<Boid> &boids,
+                                   float perceptionRadius = 100.0f,
+                                   float cosHalfRange = 0.866f) {
+  std::vector<Boid *> boidsPercieved;
+  for (Boid &other : boids) {
+    Vec2 distVector = other.position - boid.position;
+    if ((&boid != &other) && (distVector.MagnitudeSquared() <=
+                              perceptionRadius * perceptionRadius)) {
+      if ((boid.velocity.Dot(distVector) /
+           (boid.velocity.Magnitude() * distVector.Magnitude())) >=
+          cosHalfRange) {
+        Boid *ptrOther = &other;
+        boidsPercieved.push_back(ptrOther);
+      };
+    };
+  };
+  return boidsPercieved;
 };
 
 void UpdateBoid(Boid &boid, const float dt) {
@@ -136,10 +152,6 @@ void RenderBoid(SDL_Renderer *renderer, const Boid &boid,
                             {{B.x, B.y}, {125, 211, 252, 255}}};
 
   std::array<int, 3> indices = {0, 1, 2};
-  /* if (!SDL_RenderGeometry(renderer, nullptr, vertices, 3, nullptr, 0)) {
-    std::cerr << "SDL_RenderGeometry failed: " << SDL_GetError() << '\n';
-  }; */
-
   if (!SDL_RenderGeometry(renderer, nullptr, vertices, 3, &indices[0], 3)) {
     std::cerr << "SDL_RenderGeometry() failed:" << SDL_GetError() << '\n';
   };
