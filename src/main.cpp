@@ -138,8 +138,8 @@ void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
                 const float boidMass = 1.0f,
                 const float separationRadius = 50.0f) {
 
-  std::cout << "No. of boids percieved by me (" << &boid
-            << " ): " << boidsPercieved.size() << '\n';
+  // std::cout << "No. of boids percieved by me (" << &boid << " ): " <<
+  // boidsPercieved.size() << '\n';
 
   // 01. Aligment
   Vec2 sumVelocities(0, 0);
@@ -164,7 +164,7 @@ void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
   for (Boid *b : boidsPercieved) {
     Vec2 displacement = boid.position - b->position;
     if (displacement.Magnitude() <= separationRadius) {
-      separationSteeringForce = displacement / displacement.MagnitudeSquared();
+      separationSteeringForce += displacement / displacement.MagnitudeSquared();
     };
   };
 
@@ -177,13 +177,14 @@ void UpdateBoid(Boid &boid, const float dt, std::vector<Boid *> &boidsPercieved,
   // Update a boid's velocity and position using semi-implicit Euler method.
   boid.velocity += boid.acceleration * dt;
   boid.position += boid.velocity * dt;
-
-  std::cout << "I experienced steering force / acceleration <"
-            << boid.acceleration.x << ", " << boid.acceleration.y << "> \n \n";
-  std::cout << "My velocity: <" << boid.velocity.x << ", " << boid.velocity.y
-            << "> \n \n";
-  std::cout << "My position: <" << boid.position.x << ", " << boid.position.y
-            << "> \n \n";
+  /*
+    std::cout << "I experienced steering force / acceleration <"
+              << boid.acceleration.x << ", " << boid.acceleration.y << "> \n
+    \n"; std::cout << "My velocity: <" << boid.velocity.x << ", " <<
+    boid.velocity.y
+              << "> \n \n";
+    std::cout << "My position: <" << boid.position.x << ", " << boid.position.y
+              << "> \n \n"; */
 };
 
 void RenderBackground(SDL_Renderer *renderer) {
