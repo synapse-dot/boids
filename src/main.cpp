@@ -91,11 +91,24 @@ struct Boid {
       : position(position), velocity(velocity), acceleration(acceleration) {};
 };
 
-void HandleEvent(SDL_Event &event, bool &isRunning) {
+void CreateBoid(std::vector<Boid>& boids) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<float> distPos(0, 1000);
+    std::uniform_real_distribution<float> distVel(-20, 20);
+    boids.emplace_back(Vec2(distPos(gen), distPos(gen)),
+                       Vec2(distVel(gen), distVel(gen)));
+};
+
+void HandleEvent(SDL_Event &event, bool &isRunning, std::vector<Boid>& boids) {
   switch (event.type) {
   case SDL_EVENT_QUIT:
     isRunning = false;
     break;
+
+  case SDL_EVENT_KEY_UP:
+      CreateBoid(boids);
+      break;
   };
 };
 
@@ -115,8 +128,8 @@ std::vector<Boid> CreateBoids(int numBoids) {
 };
 
 std::vector<Boid *> GetBoidsInView(Boid &boid, std::vector<Boid> &boids,
-                                   const float perceptionRadius = 180.0f,
-                                   const float cosHalfRange = 0.65f,
+                                   const float perceptionRadius = 250.0f,
+                                   const float cosHalfRange = 0.4f,
                                    const float width = 1000.0f,
                                    const float height = 1000.0f) {
   std::vector<Boid *> boidsPerceived;
@@ -154,14 +167,14 @@ void LimitMagnitude(Vec2 &v, const float maxMagnitude) {
 
 void UpdateBoidAcceleration(
     Boid &boid, std::vector<Boid *> &boidsPerceived,
-    const float cohesionStrength = 2.5f, const float weightA = 0.9f,
-    const float weightC = 0.35f, const float weightS = 2.0f,
-    const float boidMass = 1.0f, const float separationRadius = 35.0f,
-    const float maxAcceleration = 250.0f, const float width = 1000,
+    const float cohesionStrength = 5.0f, const float weightA = 0.6f,
+    const float weightC = 0.8f, const float weightS = 1.2f,
+    const float boidMass = 1.0f, const float separationRadius = 25.0f,
+    const float maxAcceleration = 80.0f, const float width = 1000,
     const float height = 1000) {
 
-  // std::cout << "No. of boids percieved by me (" << &boid << " ): " <<
-  // boidsPercieved.size() << '\n';
+   std::cout << "No. of boids percieved by me (" << &boid << " ): " <<
+   boidsPerceived.size() << '\n';
   boid.acceleration = Vec2(0, 0);
   if (!std::empty(boidsPerceived)) {
     // 01. Aligment
@@ -223,7 +236,7 @@ void UpdateBoidAcceleration(
 }
 
 void UpdateBoid(Boid &boid, const float dt, const int width = 1000,
-                const int height = 1000, const float maxSpeed = 140.0f) {
+                const int height = 1000, const float maxSpeed = 120.0f) {
 
   // Update a boid's velocity and position using semi-implicit Euler method.
   boid.velocity += boid.acceleration * dt;
@@ -241,14 +254,13 @@ void UpdateBoid(Boid &boid, const float dt, const int width = 1000,
   } else if (boid.position.y <= 0) {
     boid.position.y = height + boid.position.y;
   };
-  /*
-    std::cout << "I experienced steering force / acceleration <"
-              << boid.acceleration.x << ", " << boid.acceleration.y << "> \n
-    \n"; std::cout << "My velocity: <" << boid.velocity.x << ", " <<
-    boid.velocity.y
-              << "> \n \n";
-    std::cout << "My position: <" << boid.position.x << ", " << boid.position.y
-              << "> \n \n"; */
+
+    std::cout << "I (" << &boid << " ) experienced steering force / acceleration <"
+              << boid.acceleration.x << ", " << boid.acceleration.y << "> \n";
+  std::cout << "My velocity: <" << boid.velocity.x << ", " << boid.velocity.y
+            << "> \n";
+  std::cout << "My position: <" << boid.position.x << ", " << boid.position.y
+            << "> \n \n";
 };
 
 void RenderBackground(SDL_Renderer *renderer) {
@@ -308,7 +320,7 @@ int main() {
 
   while (isRunning) {
     while (SDL_PollEvent(&event)) {
-      HandleEvent(event, isRunning);
+      HandleEvent(event, isRunning, boids);
     };
 
     currentTime = SDL_GetTicks();
