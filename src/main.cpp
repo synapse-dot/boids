@@ -9,7 +9,6 @@
 #include <array>
 #include <cmath>
 #include <iostream>
-#include <iterator>
 #include <random>
 #include <vector>
 
@@ -81,47 +80,68 @@ struct Vec2 {
   Vec2 Perpendicular() const { return Vec2(-1.0f * y, x); };
 };
 
+struct Colour {
+    float r;
+    float g;
+    float b;
+
+    Colour(float r, float g, float b) : r(r), g(g), b(b) {};
+};
+
 struct Boid {
   Vec2 position;
   Vec2 velocity;
   Vec2 acceleration;
+  int colorIdx;
 
   Boid(Vec2 position, Vec2 velocity = Vec2(0, 0),
-       Vec2 acceleration = Vec2(0, 0))
-      : position(position), velocity(velocity), acceleration(acceleration) {};
+       Vec2 acceleration = Vec2(0, 0), int colorIndex = 0)
+      : position(position), velocity(velocity), acceleration(acceleration), colorIdx(colorIndex) {};
 };
 
-void CreateBoid(std::vector<Boid>& boids) {
+void CreateBoid(std::vector<Boid>& boids, const int width, const int height) {
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> distPos(0, 1000);
-    std::uniform_real_distribution<float> distVel(-20, 20);
-    boids.emplace_back(Vec2(distPos(gen), distPos(gen)),
-                       Vec2(distVel(gen), distVel(gen)));
+    std::uniform_real_distribution<float> distPosx(0, width);
+    std::uniform_real_distribution<float> distPosy(0, height);
+    std::uniform_real_distribution<float> distVel(-100, 100);
+    std::uniform_int_distribution<int> distIdx(0,4);
+    boids.emplace_back(Vec2(distPosx(gen), distPosy(gen)),
+                       Vec2(distVel(gen), distVel(gen)),
+                       Vec2(0,0),
+                       distIdx(gen));
 };
 
-void HandleEvent(SDL_Event &event, bool &isRunning, std::vector<Boid>& boids) {
+void HandleEvent(SDL_Event &event, SDL_Window* window, bool &isRunning, std::vector<Boid>& boids, int& worldWidth, int& worldHeight) {
   switch (event.type) {
   case SDL_EVENT_QUIT:
     isRunning = false;
     break;
 
   case SDL_EVENT_KEY_UP:
-      CreateBoid(boids);
+      CreateBoid(boids, worldWidth, worldHeight);
+      break;
+
+  case SDL_EVENT_WINDOW_RESIZED:
+      SDL_GetWindowSize(window, &worldWidth, &worldHeight);
       break;
   };
 };
 
-std::vector<Boid> CreateBoids(int numBoids) {
+std::vector<Boid> CreateBoids(int numBoids, int worldWidth, int worldHeight) {
   std::vector<Boid> boids;
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::uniform_real_distribution<float> distPos(0, 1000);
-  std::uniform_real_distribution<float> distVel(-20, 20);
+  std::uniform_real_distribution<float> distPosx(0, worldWidth);
+  std::uniform_real_distribution<float> distPosy(0, worldHeight);
+  std::uniform_real_distribution<float> distVel(-100, 100);
+  std::uniform_int_distribution<int> distIdx(0,4);
 
   for (int i = 0; i < numBoids; ++i) {
-    boids.emplace_back(Vec2(distPos(gen), distPos(gen)),
-                       Vec2(distVel(gen), distVel(gen)));
+    boids.emplace_back(Vec2(distPosx(gen), distPosy(gen)),
+                       Vec2(distVel(gen), distVel(gen)),
+                         Vec2(0,0),
+                         distIdx(gen));
   };
 
   return boids;
@@ -129,7 +149,7 @@ std::vector<Boid> CreateBoids(int numBoids) {
 
 std::vector<Boid *> GetBoidsInView(Boid &boid, std::vector<Boid> &boids,
                                    const float perceptionRadius = 250.0f,
-                                   const float cosHalfRange = 0.4f,
+                                   const float cosHalfRange = 0.5f,
                                    const float width = 1000.0f,
                                    const float height = 1000.0f) {
   std::vector<Boid *> boidsPerceived;
@@ -143,16 +163,19 @@ std::vector<Boid *> GetBoidsInView(Boid &boid, std::vector<Boid> &boids,
     if (distVector.y > height / 2) {
       distVector.y -= height;
     } else if (distVector.y < -height / 2) {
-      distVector.x += height;
+      distVector.y += height;
     }
     if ((&boid != &other) && (distVector.MagnitudeSquared() <=
                               perceptionRadius * perceptionRadius)) {
+        float velMag = boid.velocity.Magnitude();
+        float distMag = distVector.Magnitude();
+        if (velMag > 0.001f && distMag > 0.001f) {
       if ((boid.velocity.Dot(distVector) /
-           (boid.velocity.Magnitude() * distVector.Magnitude())) >=
+           (velMag * distMag)) >=
           cosHalfRange) {
         Boid *ptrOther = &other;
         boidsPerceived.push_back(ptrOther);
-      };
+      }; };
     };
   };
   return boidsPerceived;
@@ -168,13 +191,13 @@ void LimitMagnitude(Vec2 &v, const float maxMagnitude) {
 void UpdateBoidAcceleration(
     Boid &boid, std::vector<Boid *> &boidsPerceived,
     const float cohesionStrength = 5.0f, const float weightA = 0.6f,
-    const float weightC = 0.8f, const float weightS = 1.2f,
+    const float weightC = 0.4f, const float weightS = 3.0f,
     const float boidMass = 1.0f, const float separationRadius = 25.0f,
     const float maxAcceleration = 80.0f, const float width = 1000,
     const float height = 1000) {
 
-   std::cout << "No. of boids percieved by me (" << &boid << " ): " <<
-   boidsPerceived.size() << '\n';
+    // std::cout << "No. of boids percieved by me (" << &boid << " ): " <<
+   // boidsPerceived.size() << '\n';
   boid.acceleration = Vec2(0, 0);
   if (!std::empty(boidsPerceived)) {
     // 01. Aligment
@@ -202,8 +225,9 @@ void UpdateBoidAcceleration(
     if (distCentre.y > height / 2) {
       distCentre.y -= height;
     } else if (distCentre.y < -height / 2) {
-      distCentre.x += height;
+      distCentre.y += height;
     }
+
     Vec2 cohesionSteeringForce = distCentre.Normalized() * cohesionStrength;
 
     // 03. Separation
@@ -218,7 +242,7 @@ void UpdateBoidAcceleration(
       if (distVector.y > height / 2) {
         distVector.y -= height;
       } else if (distVector.y < -height / 2) {
-        distVector.x += height;
+        distVector.y += height;
       }
       float distanceSquared = distVector.MagnitudeSquared();
       if (distanceSquared <= separationRadius * separationRadius) {
@@ -254,13 +278,13 @@ void UpdateBoid(Boid &boid, const float dt, const int width = 1000,
   } else if (boid.position.y <= 0) {
     boid.position.y = height + boid.position.y;
   };
-
+/*
     std::cout << "I (" << &boid << " ) experienced steering force / acceleration <"
               << boid.acceleration.x << ", " << boid.acceleration.y << "> \n";
   std::cout << "My velocity: <" << boid.velocity.x << ", " << boid.velocity.y
             << "> \n";
   std::cout << "My position: <" << boid.position.x << ", " << boid.position.y
-            << "> \n \n";
+            << "> \n \n"; */
 };
 
 void RenderBackground(SDL_Renderer *renderer) {
@@ -268,8 +292,8 @@ void RenderBackground(SDL_Renderer *renderer) {
   SDL_RenderClear(renderer);
 };
 
-void RenderBoid(SDL_Renderer *renderer, const Boid &boid,
-                float tipLength = 18.0f, float halfWidth = 9.0f) {
+void RenderBoid(SDL_Renderer *renderer, const Boid &boid, std::array<Colour, 5>& palette,
+                float tipLength = 18.0f, float halfWidth = 9.0f){
   // The mathematics behind this logic will be explained in
   // "boids-rendering-maths.tex".
   Vec2 Dir = boid.velocity.Normalized();
@@ -277,11 +301,12 @@ void RenderBoid(SDL_Renderer *renderer, const Boid &boid,
   Vec2 Tip = boid.position - (Dir * tipLength);
   Vec2 A = boid.position + ((Normal * halfWidth) + (Dir * (tipLength * 0.5f)));
   Vec2 B = boid.position - ((Normal * halfWidth) + (Dir * (tipLength * 0.5f)));
-
-  SDL_SetRenderDrawColor(renderer, 255, 180, 100, 255);
-  SDL_Vertex vertices[3] = {{{Tip.x, Tip.y}, {255, 180, 100, 255}},
-                            {{A.x, A.y}, {255, 180, 100, 255}},
-                            {{B.x, B.y}, {255, 180, 100, 255}}};
+  float r = (palette[boid.colorIdx]).r;
+  float g = (palette[boid.colorIdx]).g;
+  float b =(palette[boid.colorIdx]).b;
+  SDL_Vertex vertices[3] = {{{Tip.x, Tip.y}, {r, g, b, 255}},
+                            {{A.x, A.y}, {r, g, b, 255}},
+                            {{B.x, B.y}, {r, g, b, 255}}};
 
   std::array<int, 3> indices = {0, 1, 2};
   if (!SDL_RenderGeometry(renderer, nullptr, vertices, 3, &indices[0], 3)) {
@@ -295,8 +320,11 @@ int main() {
     return 1;
   };
 
+  int worldWidth = 800;
+  int worldHeight = 600;
+
   SDL_Window *window =
-      SDL_CreateWindow("Boids", 1000, 1000, SDL_WINDOW_RESIZABLE);
+      SDL_CreateWindow("Boids", worldWidth, worldHeight, SDL_WINDOW_RESIZABLE);
   if (!window) {
     std::cerr << "SDL_CreateWindow failed: " << SDL_GetError() << '\n';
     SDL_Quit();
@@ -313,14 +341,21 @@ int main() {
 
   bool isRunning = true;
   SDL_Event event;
-  std::vector<Boid> boids = CreateBoids(30);
+  std::vector<Boid> boids = CreateBoids(50, worldWidth, worldHeight);
+  std::array<Colour, 5> palette = {
+      Colour(0, 255, 255),
+      Colour(57, 255, 20),
+      Colour(255,20,147),
+      Colour(255,95,0),
+      Colour(255,255,0)
+  };
   float dt;
   Uint64 currentTime;
   Uint64 previousTime = SDL_GetTicks();
 
   while (isRunning) {
     while (SDL_PollEvent(&event)) {
-      HandleEvent(event, isRunning, boids);
+      HandleEvent(event, window, isRunning, boids, worldWidth, worldHeight);
     };
 
     currentTime = SDL_GetTicks();
@@ -328,17 +363,17 @@ int main() {
     previousTime = currentTime;
 
     for (Boid &boid : boids) {
-      std::vector<Boid *> boidsPerceived = GetBoidsInView(boid, boids);
-      UpdateBoidAcceleration(boid, boidsPerceived);
+      std::vector<Boid *> boidsPerceived = GetBoidsInView(boid, boids, 250.0f, 0.5f, worldWidth, worldHeight);
+      UpdateBoidAcceleration(boid, boidsPerceived, 5.0f, 0.6f, 0.4f, 3.0f, 1.0f, 50.0f, 80.0f, worldWidth, worldHeight);
     };
 
     for (Boid &boid : boids) {
-      UpdateBoid(boid, dt);
+      UpdateBoid(boid, dt, worldWidth, worldHeight);
     };
 
     RenderBackground(renderer);
     for (const Boid &boid : boids) {
-      RenderBoid(renderer, boid);
+      RenderBoid(renderer, boid, palette, 9.0f, 4.5f);
     };
 
     SDL_RenderPresent(renderer);
