@@ -22,6 +22,7 @@ cmake --build build
 ` ./build/boids`
 
 ## Keyboard Controls
+
 | Key Pressed | Result |
 |-----|---------------------------------------------------------|
 |b|Create a new boid with a random velocity at a random position |
@@ -30,12 +31,15 @@ cmake --build build
 |SPACE | Pause/restart the simulation |
 | v| Change the colors of boids|
 
-## Binary
-Attached is a precomplied linux binary of the program. Compiling from source is recomended.
+
 
 ## Known Limitations
 
 - Deleting boids when none exist (d key) is a no-op (safe, but silent).
 - Performance may drop above ~300 boids on older hardware.
 
-**Full Changelog**: https://github.com/synapse-dot/boids/commits/v1.0
+## License
+This project is released under the **GNU General Public License v3.0**. 
+You are free to use, modify, and distribute this software, but any 
+distributed copies or modifications must also be open-sourced under 
+the same license. See the [LICENSE](LICENSE) file for full details.
