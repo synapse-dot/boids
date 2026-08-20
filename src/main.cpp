@@ -102,16 +102,56 @@ struct Colour {
   Colour(float r, float g, float b) : r(r), g(g), b(b) {};
 };
 
+namespace boidConfig {
+std::vector<Colour> palette = {
+    Colour(0.10f, 0.20f, 0.80f), // Deep Blue
+    Colour(0.20f, 0.40f, 0.95f), // Royal Blue
+    Colour(0.30f, 0.70f, 1.00f), // Sky Blue
+    Colour(0.00f, 0.90f, 1.00f), // Cyan
+    Colour(0.00f, 0.90f, 0.80f), // Aqua
+    Colour(0.20f, 0.90f, 0.60f), // Seafoam
+    Colour(0.20f, 0.80f, 0.30f), // Emerald
+    Colour(0.50f, 0.95f, 0.40f)  // Mint
+};
+
+int numColours = palette.size();
+const int defaultColourIdx = 5;
+int currentColourIdx = defaultColourIdx;
+const int numBoids = 120;
+
+constexpr float maxSpeed = 120.0f;
+constexpr float maxAccelerationMag = 100.0f;
+
+constexpr float rPerception = 200.0f;
+constexpr float rangeAngle = 120.0f;
+const float cosHalfRange = std::cos(rangeAngle / 2);
+
+constexpr float cohesionStrength = 1.0f;
+constexpr float weightA = 1.0f;
+constexpr float weightC = 1.0f;
+constexpr float weightS = 1.0f;
+constexpr float boidMass = 1.0f;
+constexpr float rSeparation = 30.0f;
+
+constexpr float tipLength = 12.0f;
+constexpr float halfWidth = 6.0f;
+}; // namespace boidConfig
+
+namespace worldConfig {
+float width = 1280.0f;
+float height = 720.0f;
+
+Colour bgColour{15, 23, 42};
+}; // namespace worldConfig
+
 struct Boid {
   Vec2 position;
   Vec2 velocity;
   Vec2 acceleration;
-  int colourIdx;
 
   Boid(Vec2 position, Vec2 velocity = Vec2(0, 0),
        Vec2 acceleration = Vec2(0, 0), int colorIndex = 0)
-      : position(position), velocity(velocity), acceleration(acceleration),
-        colourIdx(colorIndex) {};
+      : position(position), velocity(velocity), acceleration(acceleration) {};
 };
 
 bool DestroyLastBoid(std::vector<Boid> &boids) {
@@ -122,47 +162,43 @@ bool DestroyLastBoid(std::vector<Boid> &boids) {
   return false;
 };
 
-void CreateBoid(std::vector<Boid> &boids, const int width, const int height,
-                const int colorIdx = 5) {
+void SpawnBoid(std::vector<Boid> &boids) {
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::uniform_real_distribution<float> distPosx(0, width);
-  std::uniform_real_distribution<float> distPosy(0, height);
-  std::uniform_real_distribution<float> distVel(-120, 120); // slower start
-  // std::uniform_int_distribution<int> distIdx(0, 7);        // 8 colours
-  /* boids.emplace_back(Vec2(distPosx(gen), distPosy(gen)),
-                     Vec2(distVel(gen), distVel(gen)),
-                     Vec2(0,0),
-                     distIdx(gen))*/
+  std::uniform_real_distribution<float> distPosx(0, worldConfig::width);
+  std::uniform_real_distribution<float> distPosy(0, worldConfig::height);
+  std::uniform_real_distribution<float> distVel(
+      -boidConfig::maxSpeed, boidConfig::maxSpeed); // slower start
+  std::uniform_real_distribution<float> distAcc(
+      -boidConfig::maxAccelerationMag,
+      boidConfig::maxAccelerationMag); // slower start
   boids.emplace_back(Vec2(distPosx(gen), distPosy(gen)),
-                     Vec2(distVel(gen), distVel(gen)), Vec2(0, 0), colorIdx);
+                     Vec2(distVel(gen), distVel(gen)),
+                     Vec2(distAcc(gen), distAcc(gen)));
 };
 
-std::vector<Boid> CreateBoids(int numBoids, int worldWidth, int worldHeight,
-                              const int colorIdx = 5) {
+std::vector<Boid> CreateBoids() {
   std::vector<Boid> boids;
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::uniform_real_distribution<float> distPosx(0, worldWidth);
-  std::uniform_real_distribution<float> distPosy(0, worldHeight);
-  std::uniform_real_distribution<float> distVel(-120, 120);
-  // std::uniform_int_distribution<int> distIdx(0, 7);
+  std::uniform_real_distribution<float> distPosx(0, worldConfig::width);
+  std::uniform_real_distribution<float> distPosy(0, worldConfig::height);
+  std::uniform_real_distribution<float> distVel(-boidConfig::maxSpeed,
+                                                boidConfig::maxSpeed);
+  std::uniform_real_distribution<float> distAcc(-boidConfig::maxAccelerationMag,
+                                                boidConfig::maxAccelerationMag);
 
-  for (int i = 0; i < numBoids; ++i) {
-    /* boids.emplace_back(Vec2(distPosx(gen), distPosy(gen)),
-                   Vec2(distVel(gen), distVel(gen)),
-                   Vec2(0,0),
-                   distIdx(gen))*/
+  for (int i = 0; i < boidConfig::numBoids; ++i) {
     boids.emplace_back(Vec2(distPosx(gen), distPosy(gen)),
-                       Vec2(distVel(gen), distVel(gen)), Vec2(0, 0), colorIdx);
+                       Vec2(distVel(gen), distVel(gen)),
+                       Vec2(distAcc(gen), distAcc(gen)));
   };
 
   return boids;
 };
 
 void HandleEvent(SDL_Event &event, SDL_Window *window, bool &isRunning,
-                 std::vector<Boid> &boids, int &worldWidth, int &worldHeight,
-                 bool &isPaused, int numBoids) {
+                 std::vector<Boid> &boids, bool &isPaused) {
   switch (event.type) {
   case SDL_EVENT_QUIT:
     isRunning = false;
@@ -173,7 +209,7 @@ void HandleEvent(SDL_Event &event, SDL_Window *window, bool &isRunning,
       // Handle discrete presses
       switch (event.key.key) {
       case SDLK_B:
-        CreateBoid(boids, worldWidth, worldHeight);
+        SpawnBoid(boids);
         break;
       case SDLK_D:
         if (!DestroyLastBoid(boids)) {
@@ -189,15 +225,13 @@ void HandleEvent(SDL_Event &event, SDL_Window *window, bool &isRunning,
         break;
       case SDLK_R:
         boids.clear();
-        boids = CreateBoids(numBoids, worldWidth, worldHeight);
+        boids = CreateBoids();
         break;
       case SDLK_V:
-        for (Boid &boid : boids) {
-          if (boid.colourIdx == 7) {
-            boid.colourIdx = 0;
-          } else {
-            boid.colourIdx += 1;
-          };
+        if (boidConfig::currentColourIdx == boidConfig::numColours - 1) {
+          boidConfig::currentColourIdx = 0;
+        } else {
+          boidConfig::currentColourIdx += 1;
         };
         break;
       };
@@ -205,7 +239,7 @@ void HandleEvent(SDL_Event &event, SDL_Window *window, bool &isRunning,
     // Handle continuous pressing
     switch (event.key.key) {
     case SDLK_B:
-      CreateBoid(boids, worldWidth, worldHeight);
+      SpawnBoid(boids);
       break;
     case SDLK_D:
       if (!DestroyLastBoid(boids)) {
@@ -215,36 +249,37 @@ void HandleEvent(SDL_Event &event, SDL_Window *window, bool &isRunning,
     }
 
   case SDL_EVENT_WINDOW_RESIZED:
-    SDL_GetWindowSize(window, &worldWidth, &worldHeight);
+    int width = worldConfig::width;
+    int height = worldConfig::height;
+    SDL_GetWindowSize(window, &width, &height);
+    worldConfig::width = width;
+    worldConfig::height = height;
     break;
   };
 };
 
-std::vector<Boid *>
-GetBoidsInView(Boid &boid, std::vector<Boid> &boids,
-               const float perceptionRadius = 300.0f, // increased
-               const float cosHalfRange = 0.5f, const float width = 1000.0f,
-               const float height = 1000.0f) {
+std::vector<Boid *> GetBoidsInView(Boid &boid, std::vector<Boid> &boids) {
   std::vector<Boid *> boidsPerceived;
   for (Boid &other : boids) {
     Vec2 distVector = other.position - boid.position;
-    if (distVector.x > width / 2) {
-      distVector.x -= width;
-    } else if (distVector.x < -width / 2) {
-      distVector.x += width;
+    if (distVector.x > worldConfig::width / 2) {
+      distVector.x -= worldConfig::width;
+    } else if (distVector.x < -worldConfig::width / 2) {
+      distVector.x += worldConfig::width;
     }
-    if (distVector.y > height / 2) {
-      distVector.y -= height;
-    } else if (distVector.y < -height / 2) {
-      distVector.y += height;
+    if (distVector.y > worldConfig::height / 2) {
+      distVector.y -= worldConfig::height;
+    } else if (distVector.y < -worldConfig::height / 2) {
+      distVector.y += worldConfig::height;
     }
-    if ((&boid != &other) && (distVector.MagnitudeSquared() <=
-                              perceptionRadius * perceptionRadius)) {
+    if ((&boid != &other) &&
+        (distVector.MagnitudeSquared() <=
+         boidConfig::rPerception * boidConfig::rPerception)) {
       float velMag = boid.velocity.Magnitude();
       float distMag = distVector.Magnitude();
       if (velMag > 0.001f && distMag > 0.001f) {
         if ((boid.velocity.Dot(distVector) / (velMag * distMag)) >=
-            cosHalfRange) {
+            boidConfig::cosHalfRange) {
           Boid *ptrOther = &other;
           boidsPerceived.push_back(ptrOther);
         };
@@ -261,15 +296,7 @@ void LimitMagnitude(Vec2 &v, const float maxMagnitude) {
   };
 };
 
-void UpdateBoidAcceleration(
-    Boid &boid, std::vector<Boid *> &boidsPerceived,
-    const float cohesionStrength = 1.0f, // reduced
-    const float weightA = 1.0f, const float weightC = 1.0f,
-    const float weightS = 1.0f, const float boidMass = 1.0f,
-    const float separationRadius = 30.0f, // increased spacing
-    const float maxAcceleration = 80.0f, const float width = 1000,
-    const float height = 1000) {
-
+void UpdateBoidAcceleration(Boid &boid, std::vector<Boid *> &boidsPerceived) {
   boid.acceleration = Vec2(0, 0);
   if (!std::empty(boidsPerceived)) {
     // 01. Aligment
@@ -289,85 +316,86 @@ void UpdateBoidAcceleration(
     Vec2 centre = sumPos / boidsPerceived.size();
     Vec2 distCentre = centre - boid.position;
 
-    if (distCentre.x > width / 2) {
-      distCentre.x -= width;
-    } else if (distCentre.x < -width / 2) {
-      distCentre.x += width;
+    if (distCentre.x > worldConfig::width / 2) {
+      distCentre.x -= worldConfig::width;
+    } else if (distCentre.x < -worldConfig::width / 2) {
+      distCentre.x += worldConfig::width;
     }
-    if (distCentre.y > height / 2) {
-      distCentre.y -= height;
-    } else if (distCentre.y < -height / 2) {
-      distCentre.y += height;
+    if (distCentre.y > worldConfig::height / 2) {
+      distCentre.y -= worldConfig::height;
+    } else if (distCentre.y < -worldConfig::height / 2) {
+      distCentre.y += worldConfig::height;
     }
 
-    Vec2 cohesionSteeringForce = distCentre.Normalized() * cohesionStrength;
+    Vec2 cohesionSteeringForce =
+        distCentre.Normalized() * boidConfig::cohesionStrength;
 
     // 03. Separation
     Vec2 separationSteeringForce(0, 0);
     for (Boid *b : boidsPerceived) {
       Vec2 distVector = boid.position - b->position;
-      if (distVector.x > width / 2) {
-        distVector.x -= width;
-      } else if (distVector.x < -width / 2) {
-        distVector.x += width;
+      if (distVector.x > worldConfig::width / 2) {
+        distVector.x -= worldConfig::width;
+      } else if (distVector.x < -worldConfig::width / 2) {
+        distVector.x += worldConfig::width;
       }
-      if (distVector.y > height / 2) {
-        distVector.y -= height;
-      } else if (distVector.y < -height / 2) {
-        distVector.y += height;
+      if (distVector.y > worldConfig::height / 2) {
+        distVector.y -= worldConfig::height;
+      } else if (distVector.y < -worldConfig::height / 2) {
+        distVector.y += worldConfig::height;
       }
       float distanceSquared = distVector.MagnitudeSquared();
-      if (distanceSquared <= separationRadius * separationRadius) {
+      if (distanceSquared <=
+          boidConfig::rSeparation * boidConfig::rSeparation) {
         separationSteeringForce += distVector / distanceSquared;
       };
     };
 
-    Vec2 steeringForce = alignmentSteeringForce * weightA +
-                         cohesionSteeringForce * weightC +
-                         separationSteeringForce * weightS;
+    Vec2 steeringForce = alignmentSteeringForce * boidConfig::weightA +
+                         cohesionSteeringForce * boidConfig::weightC +
+                         separationSteeringForce * boidConfig::weightS;
 
-    boid.acceleration = steeringForce / boidMass;
+    boid.acceleration = steeringForce / boidConfig::boidMass;
   }
-  LimitMagnitude(boid.acceleration, maxAcceleration);
+  LimitMagnitude(boid.acceleration, boidConfig::maxAccelerationMag);
 }
 
-void UpdateBoid(Boid &boid, const float dt, const int width = 1000,
-                const int height = 1000,
-                const float maxSpeed = 150.0f) { // increased speed
+void UpdateBoid(Boid &boid, const float dt) { // increased speed
 
   boid.velocity += boid.acceleration * dt;
-  LimitMagnitude(boid.velocity, maxSpeed);
+  LimitMagnitude(boid.velocity, boidConfig::maxSpeed);
   boid.position += boid.velocity * dt;
 
   // Wrap Around
-  if (boid.position.x > width) {
-    boid.position.x -= width;
+  if (boid.position.x > worldConfig::width) {
+    boid.position.x -= worldConfig::width;
   } else if (boid.position.x < 0) {
-    boid.position.x = boid.position.x + width;
+    boid.position.x = boid.position.x + worldConfig::width;
   };
-  if (boid.position.y > height) {
-    boid.position.y -= height;
+  if (boid.position.y > worldConfig::height) {
+    boid.position.y -= worldConfig::height;
   } else if (boid.position.y < 0) {
-    boid.position.y = height + boid.position.y;
+    boid.position.y = worldConfig::height + boid.position.y;
   };
 };
 
 void RenderBackground(SDL_Renderer *renderer) {
-  SDL_SetRenderDrawColor(renderer, 15, 23, 42, 255);
+  SDL_SetRenderDrawColor(renderer, worldConfig::bgColour.r,
+                         worldConfig::bgColour.g, worldConfig::bgColour.b, 255);
   SDL_RenderClear(renderer);
 };
 
-void RenderBoid(SDL_Renderer *renderer, const Boid &boid,
-                std::array<Colour, 8> &palette, float tipLength = 18.0f,
-                float halfWidth = 9.0f) {
+void RenderBoid(SDL_Renderer *renderer, const Boid &boid) {
   Vec2 Dir = boid.velocity.Normalized();
   Vec2 Normal = Dir.Perpendicular();
-  Vec2 Tip = boid.position - (Dir * tipLength);
-  Vec2 A = boid.position + ((Normal * halfWidth) + (Dir * (tipLength * 0.5f)));
-  Vec2 B = boid.position - ((Normal * halfWidth) + (Dir * (tipLength * 0.5f)));
-  float r = palette[boid.colourIdx].r;
-  float g = palette[boid.colourIdx].g;
-  float b = palette[boid.colourIdx].b;
+  Vec2 Tip = boid.position - (Dir * boidConfig::tipLength);
+  Vec2 A = boid.position + ((Normal * boidConfig::halfWidth) +
+                            (Dir * (boidConfig::tipLength * 0.5f)));
+  Vec2 B = boid.position - ((Normal * boidConfig::halfWidth) +
+                            (Dir * (boidConfig::tipLength * 0.5f)));
+  float r = boidConfig::palette[boidConfig::currentColourIdx].r;
+  float g = boidConfig::palette[boidConfig::currentColourIdx].g;
+  float b = boidConfig::palette[boidConfig::currentColourIdx].b;
   SDL_Vertex vertices[3] = {{{Tip.x, Tip.y}, {r, g, b, 1.0f}},
                             {{A.x, A.y}, {r, g, b, 1.0f}},
                             {{B.x, B.y}, {r, g, b, 1.0f}}};
@@ -384,11 +412,8 @@ int main() {
     return 1;
   };
 
-  int worldWidth = 1280;
-  int worldHeight = 720;
-
-  SDL_Window *window =
-      SDL_CreateWindow("Boids", worldWidth, worldHeight, SDL_WINDOW_RESIZABLE);
+  SDL_Window *window = SDL_CreateWindow(
+      "Boids", worldConfig::width, worldConfig::height, SDL_WINDOW_RESIZABLE);
   if (!window) {
     std::cerr << "SDL_CreateWindow failed: " << SDL_GetError() << '\n';
     SDL_Quit();
@@ -407,18 +432,7 @@ int main() {
   bool isPaused = false;
   SDL_Event event;
   int numBoids = 120;
-  std::vector<Boid> boids = CreateBoids(numBoids, worldWidth, worldHeight);
-
-  std::array<Colour, 8> palette = {
-      Colour(0.10f, 0.20f, 0.80f), // Deep Blue
-      Colour(0.20f, 0.40f, 0.95f), // Royal Blue
-      Colour(0.30f, 0.70f, 1.00f), // Sky Blue
-      Colour(0.00f, 0.90f, 1.00f), // Cyan
-      Colour(0.00f, 0.90f, 0.80f), // Aqua
-      Colour(0.20f, 0.90f, 0.60f), // Seafoam
-      Colour(0.20f, 0.80f, 0.30f), // Emerald
-      Colour(0.50f, 0.95f, 0.40f)  // Mint
-  };
+  std::vector<Boid> boids = CreateBoids();
 
   float dt;
   Uint64 currentTime;
@@ -426,8 +440,7 @@ int main() {
 
   while (isRunning) {
     while (SDL_PollEvent(&event)) {
-      HandleEvent(event, window, isRunning, boids, worldWidth, worldHeight,
-                  isPaused, numBoids);
+      HandleEvent(event, window, isRunning, boids, isPaused);
     };
 
     currentTime = SDL_GetTicks();
@@ -435,19 +448,17 @@ int main() {
     previousTime = currentTime;
     if (!isPaused) {
       for (Boid &boid : boids) {
-        std::vector<Boid *> boidsPerceived =
-            GetBoidsInView(boid, boids, 200.0f, 0.25f, worldWidth, worldHeight);
-        UpdateBoidAcceleration(boid, boidsPerceived, 100.0f, 0.5f, 0.7f, 0.1f,
-                               1.0, 35.0f, 120.0f, worldWidth, worldHeight);
+        std::vector<Boid *> boidsPerceived = GetBoidsInView(boid, boids);
+        UpdateBoidAcceleration(boid, boidsPerceived);
       };
 
       for (Boid &boid : boids) {
-        UpdateBoid(boid, dt, worldWidth, worldHeight);
+        UpdateBoid(boid, dt);
       };
     };
     RenderBackground(renderer);
     for (const Boid &boid : boids) {
-      RenderBoid(renderer, boid, palette, 12.0f, 6.0f); // original size
+      RenderBoid(renderer, boid); // original size
     };
 
     SDL_RenderPresent(renderer);
